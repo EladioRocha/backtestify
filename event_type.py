@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 
 class EventType(Enum):
-    SIGNAL = "SIGNAL"
+    SIGNAL = auto()
