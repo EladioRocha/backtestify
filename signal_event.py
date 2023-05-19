@@ -1,5 +1,8 @@
 from event import Event
 from event_type import EventType
+from signal_type import SignalType
+from trade_calculator import TradeCalculator
+from trade import Trade
 
 class SignalEvent(Event):
     """
@@ -21,7 +24,7 @@ class SignalEvent(Event):
         swap (float, optional): The swap value for the trade. Defaults to None.
     """
 
-    def __init__(self, signal, symbol=None, timestamp=None, take_profit=None, stop_loss=None):
+    def __init__(self, signal, symbol=None, timestamp=None, take_profit=None, stop_loss=None, previous_event=None):
         """
         Initializes a new instance of the SignalEvent class.
 
@@ -36,12 +39,16 @@ class SignalEvent(Event):
         self.signal = signal
         self.take_profit = take_profit
         self.stop_loss = stop_loss
+        self.previous_event = previous_event
         self.open_price = None
         self.high_price = None
         self.low_price = None
         self.close_price = None
         self.volume = None
         self.swap = None
+
+    def execute(self, instrument):
+        pass
 
     def __str__(self):
         return "Event: %s, Timestamp: %s, Symbol: %s, Signal: %s, Take Profit: %s, Stop Loss: %s" % (self.event_type, self.timestamp, self.symbol, self.signal, self.take_profit, self.stop_loss)
