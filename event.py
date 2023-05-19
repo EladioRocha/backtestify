@@ -18,17 +18,18 @@ class Event:
             timestamp (datetime.datetime, optional): A datetime object representing the time at which the event occurred. Defaults to None.
             symbol (str, optional): A string representing the ticker symbol of the security involved in the event. Defaults to None.
         """
-        self.timestamp = timestamp
         self.event_type = event_type
+        self.timestamp = timestamp
         self.symbol = symbol
 
-    def execute(self, backtester):
+    def execute(self, *args, **kwargs):
         """
         This method is a placeholder for executing the event logic.
         It should be overridden by child classes to provide specific implementation.
 
         Args:
-            backtester (Backtester): An instance of the backtester that will be used to execute the event logic.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
 
         Raises:
             NotImplementedError: If the method is not implemented by the child class.
