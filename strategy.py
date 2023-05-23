@@ -1,6 +1,7 @@
 from event_type import EventType
 from event import Event
 from signal_event import SignalEvent
+from signal_type import SignalType
 
 class Strategy:
     def __init__(self, prices_info):
@@ -103,13 +104,13 @@ class Strategy:
             result_events = next_candle(current, history)
 
             # Create initial event to open the first trade
-            initial_event = SignalEvent(signal='NONE') if index == 0 else None
+            initial_event = SignalEvent(signal=None) if index == 0 else None
 
             # Create last event to close the last trade
-            last_event = SignalEvent(signal='EXIT') if index == prices_info_size - 1 else None
+            last_event = SignalEvent(signal=SignalType.EXIT) if index == prices_info_size - 1 else None
 
             if result_events is None or (isinstance(result_events, (list, tuple)) and not result_events):
-                result_events = [SignalEvent()]
+                result_events = [SignalEvent(signal=None)]
             elif isinstance(result_events, Event):
                 result_events = [result_events]
 
