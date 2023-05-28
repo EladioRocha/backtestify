@@ -160,4 +160,4 @@ cython_debug/
 #.idea/
 
 index.py
-Backtester.calculate.json
+dataset.json
