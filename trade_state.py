@@ -45,12 +45,13 @@ class TradeState:
         self.entry_price = entry_price
 
     @classmethod
-    def copy_and_update(cls, current_trade_state, swap_long, swap_short, point, instrument_type):
+    def copy_and_update(cls, current_trade_state, swap_long, swap_short, point):
         if current_trade_state.signal is None:
             return cls(balance=current_trade_state.balance)
 
         swap = -swap_long if current_trade_state.signal == SignalType.BUY else swap_short
-        adjusted_price = TradeState.get_price_by_instrument_type(current_trade_state.adjusted_price, swap, point, instrument_type)
+        days_per_year = 252
+        adjusted_price = current_trade_state.adjusted_price + swap / days_per_year * point
 
         return cls(
             balance=current_trade_state.balance,

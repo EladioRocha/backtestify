@@ -14,12 +14,11 @@ class TradeExecutor:
         self.low_price = None
         self.close_price = None
         self.trade_state_price = None
-        
 
     def open_trade(
         self, 
         trade_state, 
-        comission, 
+        commission, 
         position_size, 
         event_signal,
         use_stop_loss,
@@ -46,7 +45,7 @@ class TradeExecutor:
             take_profit_pips, 
             spread_points
         )
-        trade_state.balance -= comission
+        trade_state.balance -= commission
         trade_state.equity = trade_state.balance
 
         trade = Trade(
@@ -86,7 +85,7 @@ class TradeExecutor:
             return False, False
         
         def should_close_buy_position():
-            if self.insuficient_equity:
+            if self.insufficient_equity:
                 return True, False
             
             if trade_state_signal == SignalType.BUY:
@@ -100,7 +99,7 @@ class TradeExecutor:
             return False, False
         
         def should_close_sell_position():
-            if self.insuficient_equity:
+            if self.insufficient_equity:
                 return False, True
             
             if trade_state_signal == SignalType.SELL:
@@ -111,18 +110,16 @@ class TradeExecutor:
             
             return False, False
         
-        close_long_position, close_short_position = False, False
+        close_buy_position, close_sell_position = False, False
         
         if event_signal == SignalType.EXIT:
-            close_long_position = trade_state_signal == SignalType.BUY or self.insufficient_equity
-            close_short_position = trade_state_signal == SignalType.SELL or self.insufficient_equity
+            close_buy_position = trade_state_signal == SignalType.BUY or self.insufficient_equity
+            close_sell_position = trade_state_signal == SignalType.SELL or self.insufficient_equity
         else:
-            close_long_position, close_short_position = {
-                SignalType.BUY: should_close_buy_position,
-                SignalType.SELL: should_close_sell_position
-            }[event_signal]()
-            
-        return close_long_position, close_short_position
+            close_buy_position = should_close_buy_position()
+            close_sell_position = should_close_sell_position()
+                    
+        return close_buy_position, close_sell_position
     
     def close_trade(
         self,
@@ -190,29 +187,31 @@ class TradeExecutor:
         profit = position_size * (trade_state_price - adjusted_close_price)
         return profit
     
-    def execute_stop_loss(self, is_trade_open, trade_state, trade_state_signal, open_price, low_price, high_price, close_price, spread_points, previous_close_price, comission, position_size, point_value, event_signal):        
-        if (trade_state_signal == SignalType.BUY) and (not is_trade_open and previous_close_price > trade_state.stop_loss and open_price < trade_state.stop_loss):
-            trade_state.stop_loss = open_price
+    def execute_stop_loss(self, is_trade_open, trade_state, trade_state_signal, open_price, low_price, high_price, close_price, spread_points, previous_close_price, commission, position_size, point_value, event_signal):        
+        profit = 0
         
         if trade_state_signal == SignalType.BUY and low_price <= trade_state.stop_loss:
+            if (trade_state_signal == SignalType.BUY) and (not is_trade_open and previous_close_price > trade_state.stop_loss and open_price < trade_state.stop_loss):
+                trade_state.stop_loss = open_price
+
             profit = (
                 position_size
                 * (trade_state.stop_loss - trade_state.adjusted_price)
                 * point_value
                 * self.currency_ratio
-                - comission
+                - commission
             )
 
-        if (trade_state_signal == SignalType.SELL) and (not is_trade_open and close_price < trade_state.stop_loss and trade_state.stop_loss <= self.open_price + spread_points):
-            trade_state.stop_loss = open_price + spread_points
-
         if trade_state_signal == SignalType.SELL and high_price + spread_points >= trade_state.stop_loss:
+            if (trade_state_signal == SignalType.SELL) and (not is_trade_open and close_price < trade_state.stop_loss and trade_state.stop_loss <= self.open_price + spread_points):
+                trade_state.stop_loss = open_price + spread_points
+            
             profit = (
                 position_size
                 * (trade_state.adjusted_price - trade_state.stop_loss)
                 * point_value
                 * self.currency_ratio
-                - comission
+                - commission
             )
 
         trade_state.signal = None
@@ -236,7 +235,9 @@ class TradeExecutor:
 
         return trade
 
-    def execute_take_profit(self, is_trade_open, trade_state, trade_state_signal, open_price, low_price, high_price, close_price, spread_points, previous_close_price, comission, position_size, point_value, event_signal):
+    def execute_take_profit(self, is_trade_open, trade_state, trade_state_signal, open_price, low_price, high_price, close_price, spread_points, previous_close_price, commission, position_size, point_value, event_signal):
+        profit = 0
+        
         if trade_state_signal == SignalType.BUY:
             if not is_trade_open and self.open_price >= trade_state.take_profit:
                 trade_state.take_profit = self.open_price
@@ -247,7 +248,7 @@ class TradeExecutor:
                             * (trade_state.take_profit - trade_state.adjusted_price)
                             * self.instrument.point_value
                             * self.instrument.currency_ratio
-                            - comission
+                            - commission
                         )
                 
         if trade_state.signal == SignalType.SELL:
@@ -264,7 +265,7 @@ class TradeExecutor:
                     * (trade_state.adjusted_price - trade_state.take_profit)
                     * self.instrument.point_value
                     * self.instrument.currency_ratio
-                    - comission
+                    - commission
                 )
 
         trade_state.signal = None
@@ -278,7 +279,7 @@ class TradeExecutor:
             timestamp=self.timestamp,
             bar=self.current_bar,
             signal=SignalType.TAKE_PROFIT,
-            size=self.instrument.position_size * (1 if event_signal == 'BUY' else -1),
+            size=position_size * (1 if event_signal == SignalType.BUY else -1),
             price=trade_state.take_profit,
             profit=profit,
             balance=trade_state.balance,
