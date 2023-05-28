@@ -105,7 +105,47 @@ class SignalEvent(Event):
                 spread_points=instrument.spread_points,
                 open_price=self.open_price
             )
-                
+
+            if (trade_state.signal == SignalType.BUY and close_buy_position) or (trade_state.signal == SignalType.SELL and close_sell_position):
+                trade = self.trade_executor.close_trade()
+            else:
+                if use_stop_loss:
+                    trade  = trade_executor.execute_stop_loss(
+                        is_trade_open=is_trade_open,
+                        trade_state=trade_state,
+                        stop_loss=stop_loss,
+                        stop_loss_pips=stop_loss_pips,
+                        open_price=self.open_price,
+                        low_price=self.low_price,
+                        high_price=self.high_price,
+                        close_price=self.close_price,
+                        spread_points=instrument.spread_points,
+                        previous_close_price=self.previous_event.close_price,
+                        comission=instrument.comission,
+                        position_size=instrument.position_size,
+                        point_value=instrument.point_value,
+                        event_signal=self.signal
+                    )
+
+                if use_take_profit:
+                    trade = trade_executor.execute_take_profit(
+                        is_trade_open=is_trade_open,
+                        trade_state=trade_state,
+                        take_profit=take_profit,
+                        take_profit_pips=take_profit_pips,
+                        open_price=self.open_price,
+                        low_price=self.low_price,
+                        high_price=self.high_price,
+                        close_price=self.close_price,
+                        spread_points=instrument.spread_points,
+                        previous_close_price=self.previous_event.close_price,
+                        comission=instrument.comission,
+                        position_size=instrument.position_size,
+                        point_value=instrument.point_value,
+                        event_signal=self.signal
+                    )
+
+            trade_state = self.update_unrealized_profit(trade_state, instrument)
 
         return trade
 
@@ -140,6 +180,22 @@ class SignalEvent(Event):
     
     def calculate_stop_loss(self, use_stop_loss, stop_loss, pips):
         return stop_loss * pips if use_stop_loss else 0
+
+    def update_unrealized_profit(self, trade_state, instrument, signal_event):
+        if trade_state.signal is None:
+            return trade_state
+        
+        current_close_price = signal_event.close_price + (instrument.spread_points if trade_state.signal == 'SELL' else 0)
+        floating_profit = (
+            instrument.position_size
+            * (current_close_price - trade_state.adjusted_price if trade_state.signal == 'BUY' else trade_state.adjusted_price - current_close_price)
+            * instrument.point_value
+            * instrument.currency_ratio
+        )
+        trade_state.unrealized_profit = floating_profit
+        trade_state.equity = trade_state.balance + floating_profit
+
+        return trade_state
 
     def __str__(self):
         return "Event: %s, Timestamp: %s, Symbol: %s, Signal: %s, Take Profit: %s, Stop Loss: %s" % (self.event_type, self.timestamp, self.symbol, self.signal, self.take_profit, self.stop_loss)
