@@ -147,7 +147,7 @@ class SignalEvent(Event):
 
             trade_state = self.update_unrealized_profit(trade_state, instrument)
 
-        return trade
+        return trade_state, trade
 
     def get_stop_loss(self, stop_loss):
         use_stop_loss = False
