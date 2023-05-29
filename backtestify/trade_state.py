@@ -56,8 +56,14 @@ class TradeState:
         return cls(
             balance=current_trade_state.balance,
             size=current_trade_state.size,
-            signal=current_trade_state.signal,
+            signal=current_trade_state.signal if current_trade_state.signal != SignalType.EXIT else None,
             stop_loss=current_trade_state.stop_loss,
             take_profit=current_trade_state.take_profit,
             adjusted_price=adjusted_price
         )
+
+    def __str__(self):
+        return "Trade Signal: %s, Balance: %s, Equity: %s, Amount: %s, Unrealized Profit: %s, Realized Profit: %s" % (self.signal, self.balance, self.equity, self.size, self.unrealized_profit, self.realized_profit)
+
+    def __repr__(self):
+        return str(self)

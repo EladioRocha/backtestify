@@ -46,12 +46,12 @@ class SignalEvent(Event):
         self.close_price = None
         self.volume = None
         self.swap_long = None
-        self.swap_short = None
+        self.swap_short = None,
 
     def execute(self, instrument, current_trade_state, balance, current_bar):
         if current_bar == 0:
             return TradeState(balance)
-        
+    
         trade = None
         is_trade_open = False
 
@@ -76,7 +76,7 @@ class SignalEvent(Event):
         )
 
         if trade_state.signal is None:
-            if trade_state.equity <= instrument.required_margin and (self.signal == SignalType.BUY or self.signal == SignalType.SELL):
+            if trade_state.equity <= instrument.required_margin or (self.signal != SignalType.BUY and self.signal != SignalType.SELL):
                 return trade_state
             
             trade = trade_executor.open_trade(

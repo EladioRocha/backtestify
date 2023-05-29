@@ -9,19 +9,19 @@ class Strategy:
         self.current_index = 0
         self.events = []
 
-    def get_past_info(self):
-        return self.prices_info.iloc[:self.current_index + 1]
+    def get_past_info(self, shift=1):
+        return self.prices_info.iloc[:self.current_index + shift]
     
     def set_ohlcv(self, signal):
-        required_columns = ['open', 'high', 'low', 'close']
-        optional_columns = ['volume']
+        required_columns = ["open", "high", "low", "close"]
+        optional_columns = ["volume"]
 
         past_info = self.get_past_info()
 
         for column in required_columns:
             if column not in past_info.columns:
                 raise ValueError(f"The market info must have a '{column}' column.")
-            setattr(signal, f'{column}_price', past_info[column].iloc[-1])
+            setattr(signal, f"{column}_price", past_info[column].iloc[-1])
 
         for column in optional_columns:
             if column in past_info.columns:
@@ -33,12 +33,12 @@ class Strategy:
 
         past_info = self.get_past_info()
 
-        if past_info.index.name == 'timestamp':
+        if past_info.index.name == "timestamp":
             signal.timestamp = past_info.index[-1]
-        elif 'timestamp' in past_info.columns:
-            signal.timestamp = past_info['timestamp'].iloc[-1]
+        elif "timestamp" in past_info.columns:
+            signal.timestamp = past_info["timestamp"].iloc[-1]
         else:
-            raise ValueError("The market info must have a 'timestamp' column or index.")
+            raise ValueError("The market info must have a 'timestam' column or index.")
 
         return None
         
@@ -50,17 +50,17 @@ class Strategy:
 
         past_info = self.get_past_info()
 
-        for attr in ['swap_long', 'swap_short']:
+        for attr in ["swap_long", "swap_short"]:
             last_value = past_info.get(attr)
             setattr(signal, attr, last_value.iloc[-1] if last_value is not None else 0)
 
     def set_symbol_if_none(self, signal):
         past_info = self.get_past_info()
 
-        if signal.symbol is not None or 'symbol' not in past_info.columns:
+        if signal.symbol is not None or "symbol" not in past_info.columns:
             return
         
-        signal.symbol = past_info['symbol'].iloc[-1]
+        signal.symbol = past_info["symbol"].iloc[-1]
 
     def get_signal_events(self, events):
         return [event for event in events if event.event_type == EventType.SIGNAL]
@@ -97,11 +97,11 @@ class Strategy:
     def apply_strategy(self, next_candle):
         # Save the amount of size of the prices_info
         prices_info_size = len(self.prices_info)
-            
-        for index, current in enumerate(self.prices_info.itertuples()):
+
+        for index, _ in enumerate(self.prices_info.itertuples()):
             self.current_index = index
-            history = self.get_past_info()
-            result_events = next_candle(current, history)
+            history = self.get_past_info(shift=1)
+            result_events = next_candle(history)
 
             # Create initial event to open the first trade
             initial_event = SignalEvent(signal=None) if index == 0 else None
@@ -115,7 +115,8 @@ class Strategy:
                 result_events = [result_events]
 
             if initial_event:
-                result_events.append(initial_event)
+                # The initial event is always none because is the way to create the trade state
+                result_events = [initial_event, *result_events]
             if last_event:
                 result_events.append(last_event)
 
@@ -125,7 +126,7 @@ class Strategy:
         return self.events
 
     def generate_signals(self):
-        if not hasattr(self, 'next_candle'):
+        if not hasattr(self, "next_candle"):
             raise NotImplementedError("Subclasses should implement a next_candle method.")
         
         events = self.apply_strategy(self.next_candle)
