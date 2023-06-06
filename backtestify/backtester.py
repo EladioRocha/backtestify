@@ -75,3 +75,5 @@ class Backtester:
 
         df_trades = pd.DataFrame(trades)
         df_trades = df_trades.set_index('timestamp')
+
+        return df_trades
