@@ -190,14 +190,14 @@ class SignalEvent(Event):
             return trade_state
         
         current_close_price = close_price + (instrument.spread_points if trade_state.signal == SignalType.SELL else 0)
-        floating_profit = (
+        unrealized_profit = (
             instrument.position_size
             * (current_close_price - trade_state.adjusted_price if trade_state.signal == SignalType.BUY else trade_state.adjusted_price - current_close_price)
             * instrument.point_value
             * instrument.currency_ratio
         )
-        trade_state.unrealized_profit = floating_profit
-        trade_state.equity = trade_state.balance + floating_profit
+        trade_state.unrealized_profit = unrealized_profit
+        trade_state.equity = trade_state.balance + unrealized_profit
 
         return trade_state
 

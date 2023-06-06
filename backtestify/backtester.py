@@ -63,6 +63,8 @@ class Backtester:
             if isinstance(res, TradeState):
                 self.trading_state[current_bar] = res
                 self.current_trade_state = res
+                self.account.set_equity(res.equity)
+                self.account.set_balance(res.balance)
             elif isinstance(res, Trade):
                 self.trades.append(res)
 
