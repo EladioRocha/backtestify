@@ -5,7 +5,7 @@ with open("README.md", "r") as file:
 
 setuptools.setup(
     name="backtestify",
-    version="0.1.0",
+    version="0.1.2",
     author="Eladio Rocha Vizcaino",
     author_email="eladio.rocha99@gmail.com",
     description="A package for backtesting trading strategies",
