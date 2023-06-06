@@ -152,7 +152,7 @@ class TradeExecutor:
             signal=event_signal,
             size=position_size * (1 if event_signal == SignalType.BUY else -1),
             price=trade_state.adjusted_price,
-            profit=0,
+            profit=profit,
             balance=trade_state.balance,
             stop_loss=trade_state.stop_loss,
             take_profit=trade_state.take_profit
