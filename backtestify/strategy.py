@@ -94,14 +94,14 @@ class Strategy:
             self.set_previous_event(signal)
             self.set_bar_index(signal)
 
-    def apply_strategy(self, next_candle):
+    def apply_strategy(self, on_tick):
         # Save the amount of size of the prices_info
         prices_info_size = len(self.prices_info)
 
         for index, _ in enumerate(self.prices_info.itertuples()):
             self.current_index = index
             history = self.get_past_info(shift=1)
-            result_events = next_candle(history)
+            result_events = on_tick(history)
 
             # Create initial event to open the first trade
             initial_event = SignalEvent(signal=None) if index == 0 else None
@@ -126,8 +126,8 @@ class Strategy:
         return self.events
 
     def generate_signals(self):
-        if not hasattr(self, "next_candle"):
-            raise NotImplementedError("Subclasses should implement a next_candle method.")
+        if not hasattr(self, "on_tick"):
+            raise NotImplementedError("Subclasses should implement a on_tick method.")
         
-        events = self.apply_strategy(self.next_candle)
+        events = self.apply_strategy(self.on_tick)
         return events
