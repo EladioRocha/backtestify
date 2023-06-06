@@ -1,8 +1,11 @@
+import pandas as pd
+
 from backtestify.trade_state import TradeState
 from backtestify.event_execution_context import EventExecutionContext
 from backtestify.event_execution_strategy import SignalEventExecutionStrategy
 from backtestify.signal_event import SignalEvent
 from backtestify.trade import Trade
+
 
 class Backtester:
     def __init__(self, strategy, instrument, account):
@@ -63,4 +66,12 @@ class Backtester:
             elif isinstance(res, Trade):
                 self.trades.append(res)
 
+    @property
+    def results(self):
+        trades = []
 
+        for trade in self.trades:
+            trades.append(trade.__dict__)
+
+        df_trades = pd.DataFrame(trades)
+        df_trades = df_trades.set_index('timestamp')
