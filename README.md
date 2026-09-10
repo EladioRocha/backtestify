@@ -1,108 +1,77 @@
-## Table of contents
+# Backtestify
 
-- [Table of contents](#table-of-contents)
-- [Introduction](#introduction)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [License](#license)
+An experimental **event-driven Python backtester** with CFD instrument parameters, strategy signals, account state, and trade records. It is designed for source-level strategy experiments; there is no visual strategy builder or live execution adapter in the package.
 
-## Introduction
-While there are already backtesting tools available, I aimed to create a tool that allows for more accurate backtesting specifically for Contract for Difference (CFD). My vision was to create a comprehensive tool that takes care of the entire backtesting process, where the trader can focus solely on strategy formulation and testing new strategies without needing to invest time in coding. This tool is envisioned to be user-friendly and fully open-source, similar to other strategy analysis builders available on the market, but with the added benefit of being completely free.
+## Install this checkout
 
-While platforms like MetaTrader 5 allow for backtesting strategies using technical indicators, they often fall short when it comes to applying advanced techniques such as machine learning. Such processes can be complicated and tedious. By creating a backtester directly in Python, this process is significantly simplified, and it also opens up the possibility of utilizing all kinds of existing Python modules.
+```sh
+git clone https://github.com/EladioRocha/backtestify.git
+cd backtestify
+python -m pip install -e .
+```
 
-## Installation
-pip install backtestify
+[setup.py](setup.py) declares version `0.1.6` and pandas as the runtime dependency. The examples below use the source checkout; a package-index release may differ.
 
-## Usage
-A simple example of how to use the package is shown below. More examples will be added in the future in the examples folder.
+## Offline example
+
+This synthetic three-bar example needs no broker connection or external market data:
 
 ```python
 import pandas as pd
-from backtestify import Strategy, SignalEvent, SignalType, Backtester, Account, CFD, InstrumentType
-import MetaTrader5 as mt5
-import datetime
-import talib as ta
-
-def get_asset_info_mt5(symbol, timeframe=mt5.TIMEFRAME_D1, n=1000):
-    mt5.initialize()
-    utc_from = datetime.datetime.now()
-    rates = mt5.copy_rates_from(symbol, timeframe, utc_from, n)
-    rates_frame = pd.DataFrame(rates)
-
-    columns = ['time', 'open', 'high', 'low', 'close', 'tick_volume']
-    rates_frame = rates_frame[columns]
-
-    rates_frame = rates_frame.set_index('time')
-    rates_frame.rename(columns={'tick_volume': 'volume'}, inplace=True)
-    rates_frame.index.name = 'timestamp'
-
-    rates_frame['swap_long'] = -7.84 # This is the swap rate for SPX500. This can be found in the Market Watch window in MetaTrader 5 this could be different for a specific broker or instrument and take in consideration that this could be different depending on the day of the week.
-    rates_frame['swap_short'] = 4.26
-
-    return rates_frame
-
-class RSIStrategy(Strategy):
-    def __init__(self, market_info, rsi_period):
-        self.rsi_period = rsi_period
-        self.previous_trade_signal = None
-        market_info["rsi"] = ta.RSI(market_info["close"], timeperiod=rsi_period)
-
-        super().__init__(market_info)
-
-    def on_tick(self, history):
-        try:
-
-            current = history.iloc[-1]
-
-            if current["rsi"] is None:
-                return
-
-            if current["rsi"] < 30 and self.previous_trade_signal != SignalType.BUY:
-                self.previous_trade_signal = SignalType.BUY
-                return [
-                    SignalEvent(signal=SignalType.EXIT),
-                    SignalEvent(signal=SignalType.BUY)
-                ]
-
-            if current["rsi"] > 70 and self.previous_trade_signal != SignalType.SELL:
-                self.previous_trade_signal = SignalType.SELL
-                return [
-                    SignalEvent(signal=SignalType.EXIT),
-                    SignalEvent(signal=SignalType.SELL)
-                ]
-
-        except Exception as e:
-            pass
-
-cfd = CFD(
-    instrument_type=InstrumentType.STOCK,
-    lot_size=1,
-    entry_lots=1,
-    commission=0,
-    point_value=1,
-    leverage=100,
-    point=0.01,
-    spread=5,
-    period=mt5.TIMEFRAME_D1,
-    pips=0.01,
+from backtestify import (
+    Account, Backtester, CFD, InstrumentType,
+    SignalEvent, SignalType, Strategy,
 )
-df = get_asset_info_mt5("SPX500")
 
-sma = RSIStrategy(df, 14)
-account = Account(10000)
-backtester = Backtester(sma, cfd, account)
+prices = pd.DataFrame({
+    "open": [100.0, 101.0, 102.0],
+    "high": [101.0, 102.0, 103.0],
+    "low": [99.0, 100.0, 101.0],
+    "close": [100.5, 101.5, 102.5],
+}, index=pd.date_range("2024-01-01", periods=3, name="timestamp"))
+
+class BuyOnce(Strategy):
+    def on_tick(self, history):
+        if len(history) == 1:
+            return SignalEvent(signal=SignalType.BUY)
+        return None
+
+instrument = CFD(
+    instrument_type=InstrumentType.STOCK,
+    lot_size=1, entry_lots=1, commission=0,
+    point_value=1, leverage=1, period=1,
+    point=0.01, spread=0, pips=0.01,
+)
+backtester = Backtester(BuyOnce(prices), instrument, Account(10000))
 backtester.run()
-
-backtester.results
+print(backtester.results)
 ```
 
-## Contributing
+The strategy machinery adds an exit signal on the last bar. The example is a code demonstration with arbitrary instrument settings, not a realistic performance study.
 
-For any bug reports or recommendations, please visit our [issue tracker](https://github.com/EladioRocha/backtestify/issues) and create a new issue. If you're reporting a bug, it would be great if you can provide a minimal reproducible example.
+## Data and strategy contract
 
-Thank you for your contribution!
+- Subclass `Strategy` and implement `on_tick(history)`. History includes the current bar.
+- Return a `SignalEvent`, a list of events, or `None`.
+- Provide `open`, `high`, `low`, and `close` columns. `volume` is optional.
+- Provide a `timestamp` column or an index named `timestamp`.
+- Optional `swap_long`, `swap_short`, and `symbol` columns populate event metadata; missing swaps default to zero.
+- Build fresh strategy, account, and backtester objects for independent runs because event and trade state accumulate.
 
-## License
-[Apache 2.0](https://choosealicense.com/licenses/apache-2.0/)
+## Code map
+
+| File | Responsibility |
+| --- | --- |
+| [backtestify/strategy.py](backtestify/strategy.py) | Iterate price history and enrich signals. |
+| [backtestify/backtester.py](backtestify/backtester.py) | Execute events and expose trade results. |
+| [backtestify/cfd.py](backtestify/cfd.py) | Instrument costs and position parameters. |
+| [backtestify/trade_executor.py](backtestify/trade_executor.py) | Position opening, closing, and price calculations. |
+| [backtestify/account.py](backtestify/account.py) | Account balance and equity. |
+
+The [historical MetaTrader example](docs/metatrader-example.md) is preserved separately because it needs extra dependencies and a terminal connection.
+
+## Limitations and validation
+
+There is no automated test suite. Empty trade results currently fail when setting the result index, and some stop-loss/take-profit branches reference attributes not initialized by `TradeExecutor`. The offline example does not exercise those branches. Review execution-price assumptions, current-bar information, costs, and risk handling before interpreting results.
+
+Report issues with a minimal dataset and expected trade sequence in the [issue tracker](https://github.com/EladioRocha/backtestify/issues). Licensed under [Apache 2.0](LICENSE).
